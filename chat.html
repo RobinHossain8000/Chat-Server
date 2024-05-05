@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Chat</title>
+    <link rel="stylesheet" href="styles/style.css" />
+    <script src="node_modules/socket.io/client-dist/socket.io.js"></script>
+    <script src="node_modules/socketio-file-upload/client.js"></script>
+    <script src="node_modules/jquery/dist/jquery.js"></script>
+    <script>
+      $(() => {
+        var socket = io("http://localhost:8039");
+        //socket events
+        socket.on("connect", () => {
+          var uploader = new SocketIOFileUpload(socket);
+          uploader.listenOnInput(document.getElementById("fu"));
+          socket.on("connectionsuccess", (msg) => {
+            console.log(msg);
+            $("#join-div").show();
+          });
+          socket.on("userlist", (users) => {
+            $("#join-div").hide();
+            $("#chat-div").show();
+            $("#users").empty();
+            $("#to").empty();
+            users.forEach((u) => {
+              $("#users").append(`<li>${u.username}</li>`);
+              $("#to").append(`<option value='${u.id}'>${u.username}</option>`);
+            });
+            $("#to").append(`<option value='' selected>Select one</option>`);
+          });
+          socket.on("message", (o) => {
+            $("#messages").append(`<li>From ${o.from}: ${o.msg}</li>`);
+          });
+          socket.on("privateshare", (data, u) => {
+            console.log(data);
+            console.log(u);
+            $("#private").append(`<div class='share'>
+                                    <div>From ${u}</div>
+                                <div>Social Media Name ${data.title}</div>
+                                <div>Links ${data.urls}</div>
+                                <div>
+                                `);
+          });
+          socket.on("uploaded", (m) => {
+            console.log(m);
+            $("#file-box").append(`<div class='box'>
+                <img src="uploads/${m.type == "image" ? m.file : "file.png"}" />
+                <div>Uploaded by ${m.from}</div>
+                <div><a target='_blank' href="uploads/${
+                  m.file
+                }">Download</a></div>
+            </div>`);
+          });
+          //buttons
+          $("#join").click(() => {
+            console.log("join");
+            socket.emit("addme", $("#username").val());
+            $("#display-name").html("Connected as " + $("#username").val());
+          });
+          $("#send").click(() => {
+            console.log("send");
+            socket.emit("send", $("#msg").val());
+            $("#msg").val("");
+          });
+          $("#share").click(() => {
+            if (document.getElementById("form").checkValidity()) {
+              socket.emit("share", {
+                to: $("#to").val(),
+                Socialmedianame: $("#title").val(),
+                Links: $("#urls").val(),
+              });
+            }
+          });
+          $("#browse").click(() => {
+            $("#fu").trigger("click");
+          });
+        });
+      });
+    </script>
+  </head>
+
+  <body>
+    <!--navbar start-->
+    <body style="background-color:rgb(247, 240, 240)">
+      <nav class="nav">
+            <span><img src="picture/logo.png" /></span>
+            <span class="brand">Chat <sup style="color:white">private</sup></span>
+            <span class="fixer"></span>
+            <ul>     
+                <li><a href="index.html">Home</a></li> 
+                
+                <li><a href="chat.html">Live Chat</a></li>
+    
+                <li><a href="index.html">About Us
+                
+                </a></li>
+                
+            </ul>
+        </nav>
+    <!--navbar End-->
+
+    <!--main start-->
+    <main class="main-div">
+      <!--Join section start-->
+      <div class="div-1" id="join-div" style="display: none">
+        <div class="rowflex">
+          <input id="username" placeholder="username..." class="text" />
+          <button type="button" id="join" class="buttonset-1">Connect</button> 
+        </div>
+      </div>
+      <!--Join section end-->
+
+      <!--User panel start-->
+      <div class="panel" id="chat-div" style="display: none">
+        <div>
+          <!--Showing-->
+          <div class="display-name" id="display-name"></div><!--Connected as-->
+          <div class="uploadmessage">
+            <div class="rowflex" style="padding: 15px">
+              <!--Send Browse-->
+              <input id="msg" placeholder="message..." class="text" />
+              <button type="button" id="send" class="buttonset-1">Send</button>
+              <button type="button" id="browse" class="buttonset-2">Upload</button>
+            </div>
+            <!--Send Browse-->
+          </div>
+          <!--Showin Messages-file Start-->
+          <div class="div-2">
+            <div
+              class="column"
+              style="
+                padding: 15px;
+                height: 250px;
+                min-height: 250px;
+                overflow: auto;
+              "
+            >
+              <div class="hlist">Messages</div>
+              <ul id="messages" class="list"></ul>
+            </div>
+            <div
+              class="column"
+              style="
+                padding: 15px;
+                height: 250px;
+                min-height: 250px;
+                overflow: auto;
+              "
+            >
+              <div class="hlist">Files</div>
+              <div class="file-box" id="file-box"></div>
+            </div>
+          </div>
+          <!--Showing Messages-file End-->
+
+          <!--Private Share Section Start-->
+          <div class="uploadmessage">
+            <div class="hlist">Share private</div>
+            <form id="form">
+              <!--Form Start-->
+              <div class="rowflex" style="padding: 5px 15px">
+                <select id="to" class="text" required></select>
+                <!--Drop down-->
+              </div>
+              <div class="rowflex" style="padding: 5px 15px">
+                <input
+                  placeholder="social media name..."
+                  id="title"
+                  class="text"
+                  required
+                /><!--Title...-->
+              </div>
+              <div class="rowflex" style="padding: 5px 15px">
+                <!--Text area for Url-->
+                <textarea
+                  placeholder="id link..."
+                  id="urls"
+                  class="text"
+                  rows="3"
+                  required
+                ></textarea>
+              </div>
+              <div
+                class="rowflex"
+                style="padding: 5px 15px; justify-content: flex-end"
+              >
+                <!--Share Button-->
+                <button id="share" type="button" class="buttonset-2">
+                  Share
+                </button>
+              </div>
+            </form>
+            <!--Form End-->
+          </div>
+          <!--Showing  Private Share-->
+          <div
+            class="column"
+            style="
+              padding: 15px;
+              height: 300px;
+              min-height: 300px;
+              overflow: auto;
+            "
+          >
+            <div class="hlist">Private Shares</div>
+            <div id="private"></div>
+          </div>
+        </div>
+        <!--Showing End -->
+        <div>
+          <!--Users list start-->
+          <div class="hlist" style="border-radius: 5px; background-color:mediumspringgreen; ">Users</div>
+          <ul id="users" class="list" ></ul>
+        </div>
+        <!--User list end-->
+      </div>
+      <!--User panel end-->
+    </main>
+    <!--navbar end-->
+    <input type="file" id="fu" style="display: none" />
+    <footer>
+      <p style="text-align: center">
+        &copy; 2023 Chat-Private. Design by Robin.
+      </p>
+    </footer>
+  </body>
+</html>
